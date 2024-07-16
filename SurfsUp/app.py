@@ -7,8 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
-from datetime import datetime
-
+from datetime import datetime, timedelta
 
 #################################################
 # Database Setup
@@ -49,13 +48,35 @@ def welcome():
         f"/api/v1.0/YYYY-MM-DD/YYYY-MM-DD"
     )
 
+#@app.route("/api/v1.0/precipitation")
+#def precipitation():
+    # Create our session (link) from Python to the DB
+#    session = Session(engine)
+
+    # Query all precipitation
+#    results = session.query(Measurement.date, Measurement.prcp).all()
+
+#    session.close()
+
+    # Convert list of tuples into dictionary
+#    all_precipitation = {date: prcp for date, prcp in results}
+
+#    return jsonify(all_precipitation)
+
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    # Query all precipitation
-    results = session.query(Measurement.date, Measurement.prcp).all()
+    # Determine the latest date in the dataset
+    latest_date = session.query(func.max(Measurement.date)).scalar()
+    latest_date = datetime.strptime(latest_date, '%Y-%m-%d')
+    one_year_ago = latest_date - timedelta(days=365)
+
+    # Query precipitation data for the last year
+    results = session.query(Measurement.date, Measurement.prcp)\
+                     .filter(Measurement.date >= one_year_ago)\
+                     .all()
 
     session.close()
 
@@ -63,6 +84,7 @@ def precipitation():
     all_precipitation = {date: prcp for date, prcp in results}
 
     return jsonify(all_precipitation)
+
 
 @app.route("/api/v1.0/stations")
 def stations():
