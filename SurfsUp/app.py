@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
 from flask import Flask, jsonify
-
+from datetime import datetime
 
 
 #################################################
@@ -44,7 +44,9 @@ def welcome():
         f"Available Routes:<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/YYYY-MM-DD<br/>"
+        f"/api/v1.0/YYYY-MM-DD/YYYY-MM-DD"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -96,5 +98,54 @@ def tobs():
 
     return jsonify(all_tobs)
 
+@app.route("/api/v1.0/<start>")
+def start(start):
+    session = Session(engine)
+    try:
+        start_date = datetime.strptime(start, '%Y-%m-%d')
+        results = session.query(
+            func.min(Measurement.tobs),
+            func.avg(Measurement.tobs),
+            func.max(Measurement.tobs)
+        ).filter(Measurement.date >= start_date).all()
+        session.close()
+
+        temps = list(np.ravel(results))
+        return jsonify({
+            'min_temperature': temps[0],
+            'avg_temperature': temps[1],
+            'max_temperature': temps[2]
+        })
+    except ValueError:
+        session.close()
+        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
+
+@app.route("/api/v1.0/<start>/<end>")
+def start_end(start, end):
+    session = Session(engine)
+    try:
+        start_date = datetime.strptime(start, '%Y-%m-%d')
+        end_date = datetime.strptime(end, '%Y-%m-%d')
+        results = session.query(
+            func.min(Measurement.tobs),
+            func.avg(Measurement.tobs),
+            func.max(Measurement.tobs)
+        ).filter(Measurement.date >= start_date).filter(Measurement.date <= end_date).all()
+        session.close()
+
+        temps = list(np.ravel(results))
+        return jsonify({
+            'min_temperature': temps[0],
+            'avg_temperature': temps[1],
+            'max_temperature': temps[2]
+        })
+    except ValueError:
+        session.close()
+        return jsonify({"error": "Invalid date format. Please use YYYY-MM-DD."}), 400
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+
